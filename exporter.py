@@ -1,19 +1,28 @@
-"""Ekspor hasil simulasi fermentasi ke file CSV, JSON, dan TXT."""
+# Ekspor hasil simulasi fermentasi ke file CSV, JSON, dan TXT
 
 import csv
 import json
 import os
+from contextlib import contextmanager
 from datetime import datetime
 
+from exceptions import EksporGagalError
 from models.mesin_inkubator import MesinInkubator
 
 KOLOM = ["bahan", "jam", "status", "ph", "tekstur", "suhu_lingkungan", "kedap_udara"]
 
 
-def _pastikan_folder(path: str) -> None:
-    folder = os.path.dirname(path)
-    if folder:
-        os.makedirs(folder, exist_ok=True)
+# Seperti open(path, "w"), plus buat folder dan ubah OSError jadi EksporGagalError
+@contextmanager
+def _buka_untuk_tulis(path: str, newline: str | None = None):
+    try:
+        folder = os.path.dirname(path)
+        if folder:
+            os.makedirs(folder, exist_ok=True)
+        with open(path, "w", newline=newline, encoding="utf-8") as f:
+            yield f
+    except OSError as e:
+        raise EksporGagalError(f"Gagal menulis '{path}': {e.strerror or e}") from e
 
 
 def _ringkasan(mesin: MesinInkubator) -> dict:
@@ -31,8 +40,7 @@ def _ringkasan(mesin: MesinInkubator) -> dict:
 
 
 def simpan_csv(mesin: MesinInkubator, path: str) -> str:
-    _pastikan_folder(path)
-    with open(path, "w", newline="", encoding="utf-8") as f:
+    with _buka_untuk_tulis(path, newline="") as f:
         writer = csv.DictWriter(f, fieldnames=KOLOM)
         writer.writeheader()
         writer.writerows(mesin.riwayat)
@@ -40,21 +48,19 @@ def simpan_csv(mesin: MesinInkubator, path: str) -> str:
 
 
 def simpan_json(mesin: MesinInkubator, path: str) -> str:
-    _pastikan_folder(path)
     data = {
         "dibuat": datetime.now().isoformat(timespec="seconds"),
         "ringkasan": _ringkasan(mesin),
         "riwayat": mesin.riwayat,
     }
-    with open(path, "w", encoding="utf-8") as f:
+    with _buka_untuk_tulis(path) as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     return path
 
 
 def simpan_txt(mesin: MesinInkubator, path: str) -> str:
-    _pastikan_folder(path)
     r = _ringkasan(mesin)
-    with open(path, "w", encoding="utf-8") as f:
+    with _buka_untuk_tulis(path) as f:
         f.write("=" * 50 + "\n")
         f.write("HASIL SIMULASI FERMENTASI\n")
         f.write(f"Dibuat    : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
@@ -74,10 +80,18 @@ def simpan_txt(mesin: MesinInkubator, path: str) -> str:
     return path
 
 
+# Simpan CSV, JSON, TXT; satu gagal tidak menghentikan yang lain, error dilempar di akhir
 def simpan_semua(mesin: MesinInkubator, folder: str = "hasil", nama_dasar: str = "simulasi") -> dict:
-    """Simpan ke CSV, JSON, dan TXT sekaligus. Mengembalikan dict format -> path."""
-    return {
-        "csv": simpan_csv(mesin, os.path.join(folder, f"{nama_dasar}.csv")),
-        "json": simpan_json(mesin, os.path.join(folder, f"{nama_dasar}.json")),
-        "txt": simpan_txt(mesin, os.path.join(folder, f"{nama_dasar}.txt")),
-    }
+    penyimpan = {"csv": simpan_csv, "json": simpan_json, "txt": simpan_txt}
+    file_tersimpan = {}
+    gagal = []
+
+    for fmt, simpan in penyimpan.items():
+        try:
+            file_tersimpan[fmt] = simpan(mesin, os.path.join(folder, f"{nama_dasar}.{fmt}"))
+        except EksporGagalError as e:
+            gagal.append(str(e))
+
+    if gagal:
+        raise EksporGagalError("; ".join(gagal), file_tersimpan=file_tersimpan)
+    return file_tersimpan

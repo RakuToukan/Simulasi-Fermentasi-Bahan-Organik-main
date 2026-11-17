@@ -1,7 +1,16 @@
 from abc import ABC, abstractmethod
 
+from exceptions import InputTidakValidError
+from validasi import pastikan_angka
+
+STATUS_VALID = ("MENTAH", "FERMENTASI", "MATANG", "BUSUK")
+
+
 class BahanOrganik(ABC):
     def __init__(self, berat_awal: float):
+        pastikan_angka("berat_awal", berat_awal)
+        if berat_awal <= 0:
+            raise InputTidakValidError(f"berat_awal harus lebih dari 0, didapat {berat_awal}")
         self._berat_awal: float = berat_awal
         self._waktu_jam: int = 0
         self._status: str = "MENTAH"
@@ -32,4 +41,6 @@ class BahanOrganik(ABC):
 
     @status.setter
     def status(self, status_baru: str) -> None:
+        if status_baru not in STATUS_VALID:
+            raise InputTidakValidError(f"status '{status_baru}' tidak dikenal, pilih: {STATUS_VALID}")
         self._status = status_baru

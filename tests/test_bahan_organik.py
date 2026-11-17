@@ -1,4 +1,5 @@
 import unittest
+from exceptions import InputTidakValidError
 from models.bahan_organik import BahanOrganik
 
 class BahanUji(BahanOrganik):
@@ -27,8 +28,19 @@ class TestBahanOrganik(unittest.TestCase):
         self.assertTrue(self.bahan.dipanggil)
 
     def test_status(self):
-        self.bahan.status = "PROSES"
-        self.assertEqual(self.bahan.status, "PROSES")
+        self.bahan.status = "FERMENTASI"
+        self.assertEqual(self.bahan.status, "FERMENTASI")
+
+    def test_status_tidak_valid(self):
+        with self.assertRaises(InputTidakValidError):
+            self.bahan.status = "PROSES"
+        self.assertEqual(self.bahan.status, "MENTAH")
+
+    def test_berat_awal_tidak_valid(self):
+        for nilai in (0, -1.5, "2", None, True):
+            with self.subTest(berat_awal=nilai):
+                with self.assertRaises(InputTidakValidError):
+                    BahanUji(nilai)
 
 if __name__ == "__main__":
     unittest.main()

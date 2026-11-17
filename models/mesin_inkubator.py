@@ -1,8 +1,22 @@
+from exceptions import InputTidakValidError
 from models.bahan_organik import BahanOrganik
+from validasi import pastikan_angka, pastikan_bulat_positif
+
+SUHU_MIN = 0.0
+SUHU_MAKS = 60.0
 
 
 class MesinInkubator:
     def __init__(self, suhu_lingkungan: float, kedap_udara: bool, bahan: BahanOrganik):
+        if not isinstance(bahan, BahanOrganik):
+            raise InputTidakValidError(f"bahan harus BahanOrganik, bukan {type(bahan).__name__}")
+        if not isinstance(kedap_udara, bool):
+            raise InputTidakValidError(f"kedap_udara harus True/False, bukan {kedap_udara!r}")
+        pastikan_angka("suhu_lingkungan", suhu_lingkungan)
+        if not SUHU_MIN <= suhu_lingkungan <= SUHU_MAKS:
+            raise InputTidakValidError(
+                f"suhu_lingkungan harus {SUHU_MIN}-{SUHU_MAKS}, didapat {suhu_lingkungan}"
+            )
         self.suhu_lingkungan: float = suhu_lingkungan
         self.kedap_udara: bool = kedap_udara
         self.__bahan: BahanOrganik = bahan
@@ -10,6 +24,8 @@ class MesinInkubator:
         self.__riwayat: list = []
 
     def jalankan_simulasi(self, jam: int, interval_cetak: int) -> None:
+        pastikan_bulat_positif("jam", jam)
+        pastikan_bulat_positif("interval_cetak", interval_cetak)
         nama_bahan = type(self.__bahan).__name__
         print(f"--- Memulai Inkubasi {nama_bahan} selama {jam} Jam ---")
 
@@ -40,14 +56,14 @@ class MesinInkubator:
     def status_akhir(self) -> str:
         return self.__bahan.status
 
+    # Salinan log laporan (teks)
     @property
     def log(self) -> list:
-        """Log laporan dalam bentuk teks (salinan)."""
         return list(self.__log)
 
+    # Salinan riwayat laporan (dict), siap diekspor
     @property
     def riwayat(self) -> list:
-        """Riwayat laporan dalam bentuk terstruktur (salinan), siap diekspor."""
         return [dict(r) for r in self.__riwayat]
 
     @property
