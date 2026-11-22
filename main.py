@@ -1,3 +1,4 @@
+import argparse
 import sys
 
 from exceptions import EksporGagalError, InputTidakValidError
@@ -38,7 +39,7 @@ SKENARIO = [
     ("tempe", Kedelai,  1.0,   30.0, False, 100, 10),
 ]
 
-if __name__ == "__main__":
+def jalankan_demo() -> int:
     hasil = {}
     for skenario in SKENARIO:
         hasil[skenario[0]] = jalankan_skenario(*skenario)
@@ -48,5 +49,21 @@ if __name__ == "__main__":
     for nama, sukses in hasil.items():
         print(f"  {nama:6}: {'BERHASIL' if sukses else 'GAGAL'}")
 
-    if not all(hasil.values()):
-        sys.exit(1)
+    return 0 if all(hasil.values()) else 1
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Simulasi fermentasi bahan organik")
+    parser.add_argument("--visual", action="store_true",
+                        help="buka visualisasi web (mesin inkubator, singkong, kedelai)")
+    parser.add_argument("--gui", action="store_true",
+                        help="buka aplikasi desktop (CustomTkinter)")
+    args = parser.parse_args()
+    if args.gui:
+        from gui import jalankan_gui
+        jalankan_gui()
+    elif args.visual:
+        from server import jalankan_server
+        jalankan_server()
+    else:
+        sys.exit(jalankan_demo())

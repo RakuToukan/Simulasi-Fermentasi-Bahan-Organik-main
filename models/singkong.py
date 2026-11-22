@@ -34,5 +34,8 @@ class Singkong(BahanOrganik):
         else:
             self._status = "FERMENTASI"
 
+    def get_glukosa(self) -> float:
+        return self.__glukosa
+
     def get_kadar_etanol(self) -> float:
         return self.__kadar_etanol
